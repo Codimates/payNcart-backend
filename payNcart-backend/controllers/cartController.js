@@ -2,14 +2,14 @@ import cartModel from "../models/cartModel.js";
 
 // add to cart
 const addToCart = async (req, res) => {
-  const { userId, itemId, userEmail, itemName, price } = req.body;
-  try {
+  const { userId, itemId, userEmail, itemName, price, image } = req.body;
+  try {    
     let cart = await cartModel.findOne({ userId });
     if (!cart) {
       cart = new cartModel({
         userId: userId,
         userEmail: userEmail,
-        cartData: [{ itemName, itemId, price, quantity: 1 }],
+        cartData: [{ itemName, itemId, price, image, quantity: 1 }],
       });
     } else {
       const itemIndex = cart.cartData.findIndex(
@@ -17,7 +17,7 @@ const addToCart = async (req, res) => {
       );
 
       if (itemIndex === -1) {
-        cart.cartData.push({ itemName, itemId, price, quantity: 1 });
+        cart.cartData.push({ itemName, itemId, price, image, quantity: 1 });
       } else {
         cart.cartData[itemIndex].quantity += 1;
       }
@@ -54,7 +54,7 @@ const fetchCart = async (req, res) => {
   try {
     let cart = await cartModel.findOne({ userId });
     let cartData = await cart.cartData;
-    res.json({ success: true, cartData });
+    res.json({ success: true, cartData,cart });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: "error" });

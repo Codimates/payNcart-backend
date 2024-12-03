@@ -1,4 +1,5 @@
 import orderModel from "../models/orderModel.js";
+import cartModel from "../models/cartModel.js";
 import Stripe from "stripe";
 
 
@@ -9,18 +10,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const placeOrder = async (req,res) => {
 
     const frontend_url = "http://localhost:3000";
-    const { userId, items, amount, address } = req.body;
+    const { userId, items, amount, address, cartId } = req.body;
 
     try {
         const newOrder = new orderModel({
             userId:userId,
             items:items,
+            cartId: cartId,
             amount:amount,
             address:address
         })
         await newOrder.save();
-
-        console.log(items);
         
         const line_items = items.map((item)=>{
             if(!item.itemName || !item.price || !item.quantity){
@@ -37,6 +37,17 @@ const placeOrder = async (req,res) => {
                 },
                 quantity:item.quantity
         }})
+
+        line_items.push({
+            price_data:{
+                currency:"usd",
+                product_data:{
+                    name:"Delivery charges"
+                },
+                unit_amount:20*100
+            },
+            quantity:1
+        })
 
         const session = await stripe.checkout.sessions.create({
             line_items:line_items,
@@ -107,5 +118,29 @@ const updateStatus = async (req,res) => {
         res.json({success:false,message:"error"});
     }
 }
+
+
+
+const deletePaidCarts = async () => {
+    try {
+      // Step 1: Find all cartIds with paymentStatus true
+      const paidOrders = await orderModel.find({ paymentStatus: true }, 'cartId');
+  
+      // Extract cartIds into an array
+      const cartIds = paidOrders.map(order => order.cartId);
+  
+      if (cartIds.length > 0) {
+        // Step 2: Delete carts with these cartIds
+        const deleteResult = await cartModel.deleteMany({ _id: { $in: cartIds } });
+        
+        console.log(`${deleteResult.deletedCount} cart(s) deleted successfully.`);
+      } else {
+        console.log("No carts to delete.");
+      }
+    } catch (error) {
+      console.error("Error while deleting paid carts:", error);
+    }
+  };
+    
 
 export {placeOrder, verifyOrder,userOrders,listOrders,updateStatus}
