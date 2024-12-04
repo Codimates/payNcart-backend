@@ -5,7 +5,6 @@ import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-
 //place order
 const placeOrder = async (req,res) => {
 
@@ -65,11 +64,12 @@ const placeOrder = async (req,res) => {
 }
 // for admin, 
 const verifyOrder = async (req,res) => {
-    const {orderId,success} = req.body;
+    const {orderId,success,userId} = req.body;
     try {
         if (success=="true") {
             await orderModel.findByIdAndUpdate(orderId,{payment:true});
-            res.json({success:true,message:"Paid"});
+            await cartModel.deleteOne({userId:userId});
+            res.json({success:true,message:"Paid"});            
         }
         else{
             await orderModel.findByIdAndDelete(orderId);
@@ -118,29 +118,6 @@ const updateStatus = async (req,res) => {
         res.json({success:false,message:"error"});
     }
 }
-
-
-
-const deletePaidCarts = async () => {
-    try {
-      // Step 1: Find all cartIds with paymentStatus true
-      const paidOrders = await orderModel.find({ paymentStatus: true }, 'cartId');
-  
-      // Extract cartIds into an array
-      const cartIds = paidOrders.map(order => order.cartId);
-  
-      if (cartIds.length > 0) {
-        // Step 2: Delete carts with these cartIds
-        const deleteResult = await cartModel.deleteMany({ _id: { $in: cartIds } });
-        
-        console.log(`${deleteResult.deletedCount} cart(s) deleted successfully.`);
-      } else {
-        console.log("No carts to delete.");
-      }
-    } catch (error) {
-      console.error("Error while deleting paid carts:", error);
-    }
-  };
     
 
 export {placeOrder, verifyOrder,userOrders,listOrders,updateStatus}
